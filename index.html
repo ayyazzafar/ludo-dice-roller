@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ludo Dice Roller - Dynamic Players</title>
+    <style>
+        /* --- Basic & Layout Styles --- */
+        body {
+            font-family: sans-serif; background-color: #f0f0f0; display: flex;
+            flex-direction: column; /* Stack controls above container */
+            align-items: center; /* Center content horizontally */
+            min-height: 100vh; margin: 0; padding: 20px;
+            box-sizing: border-box;
+        }
+        .controls-area {
+            background-color: #d0d0d0;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .controls-area button {
+            padding: 8px 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #6c757d;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .controls-area button:hover { background-color: #5a6268; }
+        .controls-area button:active { transform: scale(0.95); }
+        .controls-area span { font-weight: bold; color: #333; }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap; /* Allow players to wrap to next line */
+            justify-content: center; /* Center players */
+            gap: 20px; /* Space between player boxes */
+            width: 100%;
+            max-width: 1200px; /* Adjust max-width as needed */
+            padding: 10px; /* Add some padding */
+        }
+        .player-area {
+            flex: 1 1 300px; /* Flex-grow, flex-shrink, flex-basis (min-width) */
+            max-width: 350px; /* Max width per player */
+            background-color: #ffffff; border: 1px solid #ccc;
+            border-radius: 10px; padding: 20px; text-align: center;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0,0,0,0.1); /* Added outer shadow */
+            min-height: 350px;
+            display: flex; flex-direction: column; justify-content: space-between;
+            transition: all 0.3s ease-in-out; /* Smooth add/remove transition */
+        }
+        .player-area h2 {
+            margin-top: 0; color: #333; border-bottom: 2px solid #eee;
+            padding-bottom: 10px; cursor: text; /* Indicate editable */
+            min-height: 1.5em; /* Prevent collapsing when empty */
+        }
+        .player-area h2:focus {
+             outline: 2px solid #4CAF50; /* Highlight when editing */
+             background-color: #f8f8f8;
+        }
+        .dice-controls { margin: 15px 0; font-size: 0.9em; color: #555; }
+        .dice-controls label { margin-right: 5px; }
+        .dice-controls input[type="number"] { width: 50px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; text-align: center; }
+
+        .dice-view-port {
+            perspective: 1000px; display: flex; justify-content: center; align-items: center;
+            flex-wrap: wrap; gap: 25px; /* Adjusted gap */
+            min-height: 100px; /* Adjusted height */
+            padding: 15px 10px; margin-bottom: 15px; flex-grow: 1;
+        }
+
+        /* --- 3D Dice Styles (Unchanged from previous version) --- */
+         .dice-cube { width: 50px; height: 50px; position: relative; transform-style: preserve-3d; transform: rotateX(-15deg) rotateY(15deg); }
+        .dice-cube .face { position: absolute; width: 100%; height: 100%; background-color: #fff; border: 1px solid #999; border-radius: 5px; box-shadow: inset 0 0 4px rgba(200, 200, 200, 0.7); display: grid; padding: 4px; box-sizing: border-box; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); backface-visibility: hidden; }
+        .face.front  { transform: rotateY(  0deg) translateZ(25px); } /* Adjusted translateZ for 50px cube */
+        .face.back   { transform: rotateY(180deg) translateZ(25px); }
+        .face.right  { transform: rotateY( 90deg) translateZ(25px); }
+        .face.left   { transform: rotateY(-90deg) translateZ(25px); }
+        .face.top    { transform: rotateX( 90deg) translateZ(25px); }
+        .face.bottom { transform: rotateX(-90deg) translateZ(25px); }
+        .pip { width: 10px; height: 10px; background-color: #333; border-radius: 50%; box-shadow: inset 0 1px 1px rgba(0,0,0,0.5); align-self: center; justify-self: center; }
+        .one .pip:nth-child(1) { grid-column: 2; grid-row: 2; }
+        .two .pip:nth-child(1) { grid-column: 1; grid-row: 1; } .two .pip:nth-child(2) { grid-column: 3; grid-row: 3; }
+        .three .pip:nth-child(1) { grid-column: 1; grid-row: 1; } .three .pip:nth-child(2) { grid-column: 2; grid-row: 2; } .three .pip:nth-child(3) { grid-column: 3; grid-row: 3; }
+        .four .pip:nth-child(1) { grid-column: 1; grid-row: 1; } .four .pip:nth-child(2) { grid-column: 3; grid-row: 1; } .four .pip:nth-child(3) { grid-column: 1; grid-row: 3; } .four .pip:nth-child(4) { grid-column: 3; grid-row: 3; }
+        .five .pip:nth-child(1) { grid-column: 1; grid-row: 1; } .five .pip:nth-child(2) { grid-column: 3; grid-row: 1; } .five .pip:nth-child(3) { grid-column: 2; grid-row: 2; } .five .pip:nth-child(4) { grid-column: 1; grid-row: 3; } .five .pip:nth-child(5) { grid-column: 3; grid-row: 3; }
+        .six .pip:nth-child(1) { grid-column: 1; grid-row: 1; } .six .pip:nth-child(2) { grid-column: 3; grid-row: 1; } .six .pip:nth-child(3) { grid-column: 1; grid-row: 2; } .six .pip:nth-child(4) { grid-column: 3; grid-row: 2; } .six .pip:nth-child(5) { grid-column: 1; grid-row: 3; } .six .pip:nth-child(6) { grid-column: 3; grid-row: 3; }
+        @keyframes tumble { 0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); } 25% { transform: rotateX(120deg) rotateY(-45deg) rotateZ(200deg); } 50% { transform: rotateX(-90deg) rotateY(180deg) rotateZ(-60deg); } 75% { transform: rotateX(200deg) rotateY(45deg) rotateZ(-180deg); } 100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); } }
+        .dice-cube.rolling { animation: tumble 0.7s ease-out forwards; } /* Slightly faster animation */
+        .dice-cube.show-1 { transform: rotateY(0deg)   rotateX(0deg); } .dice-cube.show-6 { transform: rotateY(180deg) rotateX(0deg); } .dice-cube.show-4 { transform: rotateY(-90deg) rotateX(0deg); } .dice-cube.show-3 { transform: rotateY(90deg)  rotateX(0deg); } .dice-cube.show-5 { transform: rotateX(-90deg) rotateY(0deg); } .dice-cube.show-2 { transform: rotateX(90deg)  rotateY(0deg); }
+
+        /* --- Other Styles --- */
+        .player-area button { padding: 10px 20px; font-size: 1em; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; transition: background-color 0.3s ease; margin-top: auto; }
+        .player-area button:hover { background-color: #45a049; }
+        .player-area button:active { transform: translateY(1px); }
+        .score-display { margin-top: 15px; font-size: 1.1em; font-weight: bold; color: #333; }
+        .score-display span { color: #d9534f; font-size: 1.2em; }
+        audio { display: none; }
+
+    </style>
+</head>
+<body>
+
+    <div class="controls-area">
+        <button id="remove-player-btn" title="Remove Last Player">-</button>
+        <span>Players: <span id="player-count-display">0</span></span>
+        <button id="add-player-btn" title="Add Player">+</button>
+    </div>
+
+    <div class="container" id="players-container">
+        </div>
+
+    <audio id="dice-sound" src="path/to/your/dice-roll.mp3" preload="auto"></audio>
+
+    <script>
+        const playersContainer = document.getElementById('players-container');
+        const addPlayerBtn = document.getElementById('add-player-btn');
+        const removePlayerBtn = document.getElementById('remove-player-btn');
+        const playerCountDisplay = document.getElementById('player-count-display');
+        const diceSound = document.getElementById('dice-sound');
+
+        let playerCount = 0; // Start with 0, will be set on init
+        const MIN_PLAYERS = 1;
+        const MAX_PLAYERS = 8; // Set a reasonable maximum
+        const DEFAULT_PLAYERS = 2;
+
+        // Face class mappings
+        const resultToFaceClass = { 1: 'show-1', 2: 'show-2', 3: 'show-3', 4: 'show-4', 5: 'show-5', 6: 'show-6' };
+
+        // --- Initialize ---
+        function init() {
+            setPlayerCount(DEFAULT_PLAYERS);
+        }
+
+        // --- Player Management ---
+        function setPlayerCount(count) {
+            playerCount = Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, count)); // Clamp between min/max
+            playerCountDisplay.textContent = playerCount;
+            renderPlayerAreas();
+            updateControlButtons();
+        }
+
+        function addPlayer() {
+            if (playerCount < MAX_PLAYERS) {
+                setPlayerCount(playerCount + 1);
+            }
+        }
+
+        function removePlayer() {
+            if (playerCount > MIN_PLAYERS) {
+                setPlayerCount(playerCount - 1);
+            }
+        }
+
+        function updateControlButtons() {
+             removePlayerBtn.disabled = playerCount <= MIN_PLAYERS;
+             addPlayerBtn.disabled = playerCount >= MAX_PLAYERS;
+        }
+
+        // --- HTML Generation ---
+        function createPlayerAreaHTML(playerNumber) {
+            // Use data-* attributes to easily identify elements later
+            return `
+                <div class="player-area" data-player-number="${playerNumber}">
+                    <h2 contenteditable="true">Player ${playerNumber}</h2>
+                    <div class="dice-controls">
+                        <label for="dice-count-${playerNumber}">Dice:</label>
+                        <input type="number" id="dice-count-${playerNumber}" value="2" min="1" max="6" data-dice-input>
+                    </div>
+                    <div class="dice-view-port" id="dice-container-${playerNumber}" data-dice-container>
+                        </div>
+                    <div>
+                        <div class="score-display">Total: <span id="total-score-${playerNumber}" data-score-display>0</span></div>
+                        <button data-roll-button>Roll Dice</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPlayerAreas() {
+            playersContainer.innerHTML = ''; // Clear existing players
+            for (let i = 1; i <= playerCount; i++) {
+                playersContainer.innerHTML += createPlayerAreaHTML(i);
+            }
+            // Note: Event listeners are handled by delegation, no need to re-attach here
+        }
+
+
+        // --- Dice Rolling Logic ---
+        function rollDie() { return Math.floor(Math.random() * 6) + 1; }
+
+        function playSound() {
+            console.log("Attempting to play sound...");
+            diceSound.currentTime = 0;
+            const playPromise = diceSound.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => console.error("Error playing sound:", error));
+            }
+        }
+
+        function createDiceHTML(result) {
+             // Unchanged from previous version - creates the 6 faces etc.
+             const diceCube = document.createElement('div');
+             diceCube.classList.add('dice-cube');
+             const faceValues = { front: 1, back: 6, right: 3, left: 4, top: 5, bottom: 2 };
+             const facePositions = ['front', 'back', 'right', 'left', 'top', 'bottom'];
+             facePositions.forEach(pos => {
+                 const faceDiv = document.createElement('div');
+                 const value = faceValues[pos];
+                 faceDiv.classList.add('face', pos, numberToWord(value));
+                 for (let i = 0; i < value; i++) { faceDiv.appendChild(document.createElement('span')); faceDiv.lastChild.classList.add('pip'); }
+                 diceCube.appendChild(faceDiv);
+             });
+             return diceCube;
+        }
+
+        function numberToWord(num) {
+            const words = ['one', 'two', 'three', 'four', 'five', 'six'];
+            return words[num - 1] || '';
+        }
+
+        function handleRoll(playerNumber) {
+            // Find the specific elements for this player
+            const playerArea = playersContainer.querySelector(`.player-area[data-player-number="${playerNumber}"]`);
+            if (!playerArea) return; // Safety check
+
+            const diceContainer = playerArea.querySelector('[data-dice-container]');
+            const diceCountInput = playerArea.querySelector('[data-dice-input]');
+            const totalScoreDisplay = playerArea.querySelector('[data-score-display]');
+
+            let numDice = parseInt(diceCountInput.value) || 1;
+            if (numDice < 1) numDice = 1;
+            if (numDice > 6) numDice = 6;
+            diceCountInput.value = numDice;
+
+            diceContainer.innerHTML = '';
+            let currentTotal = 0;
+            const animationDuration = 700; // Match CSS
+
+            playSound();
+
+            for (let i = 0; i < numDice; i++) {
+                const rollResult = rollDie();
+                currentTotal += rollResult;
+
+                const diceElement = createDiceHTML(rollResult);
+                diceContainer.appendChild(diceElement);
+
+                Object.values(resultToFaceClass).forEach(cls => diceElement.classList.remove(cls));
+                diceElement.classList.add('rolling');
+
+                (function(currentDie, result) {
+                     setTimeout(() => {
+                         currentDie.classList.remove('rolling');
+                         currentDie.classList.add(resultToFaceClass[result]);
+                     }, animationDuration);
+                 })(diceElement, rollResult);
+            }
+            totalScoreDisplay.textContent = currentTotal;
+        }
+
+        // --- Event Listeners ---
+        addPlayerBtn.addEventListener('click', addPlayer);
+        removePlayerBtn.addEventListener('click', removePlayer);
+
+        // Event Delegation for Roll Buttons
+        playersContainer.addEventListener('click', function(event) {
+            // Check if the clicked element is a roll button
+            const rollButton = event.target.closest('[data-roll-button]');
+            if (rollButton) {
+                // Find the parent player area and get its player number
+                const playerArea = rollButton.closest('.player-area');
+                const playerNumber = playerArea.dataset.playerNumber;
+                if (playerNumber) {
+                    handleRoll(parseInt(playerNumber));
+                }
+            }
+        });
+
+        // --- Run Initialization ---
+        init();
+
+    </script>
+
+</body>
+</html>
